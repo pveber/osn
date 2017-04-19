@@ -14,6 +14,19 @@ end
 
 module Dep_graph = Graph.Persistent.Digraph.Concrete(Vertex)
 
+module Dot = Graph.Graphviz.Dot(
+  struct
+    include Dep_graph
+    let graph_attributes _ = []
+    let default_vertex_attributes _ = []
+    let vertex_name id = id.Ident.name
+    let vertex_attributes _ = []
+    let get_subgraph _ = None
+    let default_edge_attributes _ = []
+    let edge_attributes _ = []
+  end
+  )
+
 open Typedtree
 
 let rec deps_of_structure g { str_items ; _ } =
@@ -36,9 +49,18 @@ and idents_from_pattern { pat_desc ; _ } =
   | _ -> []
 
 let read oc =
-  let lexbuf = Lexing.from_channel oc in
-  let loc = Location.curr lexbuf in
-  let items = Parse.implementation lexbuf in
-  let typed_items, _, _ = Typemod.type_structure Env.empty items loc in
-  let _ = deps_of_structure Dep_graph.empty typed_items in
-  { items ; typed_items }
+  try
+    let lexbuf = Lexing.from_channel oc in
+    let loc = Location.curr lexbuf in
+    let items = Parse.implementation lexbuf in
+    let typed_items, _, _ = Typemod.type_structure Env.empty items loc in
+    { items ; typed_items }
+  with
+  | Typetexp.Error (_,env,e) ->
+    Typetexp.report_error env Format.std_formatter e ;
+    failwith "42"
+  | e -> failwith (Exn.to_string e)
+
+let to_dot prg fn =
+  let dep_graph = deps_of_structure Dep_graph.empty prg.typed_items in
+  Out_channel.with_file fn ~f:(Fn.flip Dot.output_graph dep_graph)

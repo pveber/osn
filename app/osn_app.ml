@@ -3,6 +3,7 @@ open Osn
 
 let main fn () =
   let prg = In_channel.with_file fn ~f:Program.read in
+  Program.to_dot prg "rien.dot" ;
   printf "%d\n" (List.length prg.Program.items)
 
 let spec =

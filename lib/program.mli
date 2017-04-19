@@ -4,3 +4,4 @@ type t = {
 }
 
 val read : in_channel -> t
+val to_dot : t -> string -> unit
